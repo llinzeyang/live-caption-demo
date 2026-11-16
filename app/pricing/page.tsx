@@ -27,9 +27,9 @@ export default function PricingPage() {
 
         <main className="pricing-main">
           <section className="pricing-hero">
-            <h1>四引擎價格對比</h1>
+            <h1>五引擎價格對比</h1>
             <p>
-              依本 demo 實際管線估算「直播字幕 + 翻譯」公開牌價（USD）。可調整時數與每小時字元量，即時比較預估總成本。
+              依公開牌價估算「直播字幕 + 翻譯」成本（USD；含本 demo 四引擎與 Cloudflare Workers AI 參考列）。可調整時數與每小時字元量，即時比較預估總成本。
             </p>
           </section>
 
