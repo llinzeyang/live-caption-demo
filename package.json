@@ -1,0 +1,36 @@
+{
+  "name": "live-caption-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "dev:ws": "tsx scripts/ws-dev-server.ts",
+    "dev:full": "concurrently -k -n next,ws -c cyan,magenta \"npm run dev\" \"npm run dev:ws\"",
+    "dev:vercel": "vercel dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "concurrently": "^10.0.7",
+    "dotenv": "^18.0.10",
+    "tsx": "^4.23.15",
+    "typescript": "5.9",
+    "vercel": "^65.16.0"
+  },
+  "dependencies": {
+    "@google-cloud/speech": "^8.2.1",
+    "@google-cloud/translate": "^10.3.0",
+    "@vercel/functions": "^3.11.3",
+    "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
+    "next": "^15.5.29",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "ws": "^8.23.0"
+  }
+}
