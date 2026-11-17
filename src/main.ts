@@ -145,8 +145,14 @@ function bootstrapTtsLangSelect(): void {
 
 function cueHandlers() {
   return {
-    onCue: (cue: Parameters<typeof transcriptFeed.push>[0]) =>
-      transcriptFeed.push(cue),
+    onCue: (cue: Parameters<typeof transcriptFeed.push>[0]) => {
+      // Keep UI source when fixed — Nova-3 multi often mis-tags Mandarin as pt/nl.
+      const sourceLang =
+        sourceLangSelect.value !== "auto"
+          ? sourceLangSelect.value
+          : cue.sourceLang;
+      transcriptFeed.push({ ...cue, sourceLang });
+    },
     onError: (err: Error) => setError(err.message),
     onStatus: (s: "connecting" | "listening" | "stopped") => {
       if (s === "connecting") setStatus("連線翻譯服務…", "connecting");

@@ -73,7 +73,7 @@ export const ENGINES: EnginePricing[] = [
     // m2m100: $0.342/M in + $0.342/M out tokens；字元≈token 粗估雙向
     mtPerMillionUsd: 0.342 * 2,
     unitLabel: "Nova-3 WS $0.0092/min + m2m100 ~$0.68/1M tok",
-    notes: "經 Workers AI 計費（Neurons）；非本 demo 已接線的供應商。Whisper 更便宜但偏批次／非即時串流。",
+    notes: "本 demo 已接線：Nova-3 WS STT + m2m100；經 Workers AI（Neurons）計費。",
     freeTierNote: "每日 10,000 Neurons 免費（約數小時級音訊，視模型而定）。",
     docsUrl: "https://developers.cloudflare.com/workers-ai/platform/pricing/",
   },

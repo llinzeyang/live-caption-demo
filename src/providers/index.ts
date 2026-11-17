@@ -1,11 +1,13 @@
 import { createAssemblyAiCaptionProvider } from "./assemblyai";
 import { createAzureCaptionProvider } from "./azure";
+import { createCloudflareCaptionProvider } from "./cloudflare";
 import { createDeepgramCaptionProvider } from "./deepgram";
 import { createGoogleCaptionProvider } from "./google";
 import { registerProvider } from "./registry";
 
 /** Register every built-in provider once at app boot. */
 export function bootstrapProviders(): void {
+  registerProvider(createCloudflareCaptionProvider());
   registerProvider(createAzureCaptionProvider());
   registerProvider(createGoogleCaptionProvider());
   registerProvider(createDeepgramCaptionProvider());

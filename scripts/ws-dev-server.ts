@@ -12,6 +12,7 @@ import { config as loadEnv } from "dotenv";
 import { WebSocketServer } from "ws";
 
 import { handleAssemblyConnection } from "../server/assemblyai-stream";
+import { handleCloudflareConnection } from "../server/cloudflare-stream";
 import { handleDeepgramConnection } from "../server/deepgram-stream";
 import { handleGoogleConnection } from "../server/google-stream";
 
@@ -30,7 +31,7 @@ const server = createServer((_req, res) => {
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.end(
-    "live-caption WS dev server\nPaths: /api/providers/{google|deepgram|assemblyai}/stream\n",
+    "live-caption WS dev server\nPaths: /api/providers/{google|deepgram|assemblyai|cloudflare}/stream\n",
   );
 });
 
@@ -45,7 +46,9 @@ server.on("upgrade", (req, socket, head) => {
         ? handleAssemblyConnection
         : url.startsWith("/api/providers/google/stream")
           ? handleGoogleConnection
-          : null;
+          : url.startsWith("/api/providers/cloudflare/stream")
+            ? handleCloudflareConnection
+            : null;
 
   if (!handler) {
     socket.destroy();

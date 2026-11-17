@@ -7,6 +7,7 @@
   - Google Speech-to-Text + Translation
   - Deepgram + DeepL（STT + DeepL；無 DeepL 時可回退 Google Translate）
   - AssemblyAI + DeepL（同上）
+  - Cloudflare Workers AI（Nova-3 WS + m2m100）
 - **可擴展**：`CaptionProvider` 介面 + 註冊表
 - **部署**：Next.js App Router + Vercel Route Handler / WebSocket（`upgradeWebSocket`）
 
@@ -74,6 +75,23 @@ ASSEMBLYAI_API_KEY=你的_assemblyai_金鑰
 
 音訊經 `/api/providers/assemblyai/stream` 中繼到 AssemblyAI Streaming v3（預設 `universal-3-6-pro`，支援中文等 32 語；勿用 `universal-streaming-multilingual`，該模型不含中文）；金鑰不進瀏覽器。
 
+### Cloudflare Workers AI
+
+1. 開啟 [Workers AI](https://dash.cloudflare.com/?to=/:account/ai/workers-ai) → **Use REST API**
+2. 建立 **Workers AI** API Token，並複製 **Account ID**
+3. 填入：
+
+```env
+CLOUDFLARE_ACCOUNT_ID=你的_account_id
+CLOUDFLARE_API_TOKEN=你的_workers_ai_token
+# 可選：走 AI Gateway realtime（需先建立 Gateway）
+# CLOUDFLARE_AI_GATEWAY=你的_gateway_名稱
+```
+
+音訊經 `/api/providers/cloudflare/stream` 中繼到 `@cf/deepgram/nova-3`（WebSocket），翻譯走 `@cf/meta/m2m100-1.2b`；金鑰不進瀏覽器。
+
+注意：Workers AI 上 Nova-3 WebSocket **不接受** `language=ko` / `zh*`（會 HTTP 400），且 `multi` 常把普通話誤判成 pt/nl。本 demo 對 **普通話／粵語／韓語** 改走 `@cf/openai/whisper-large-v3-turbo` 分段辨識；英／日仍用 Nova-3 串流。
+
 ## 啟動（本機）
 
 ### 建議（Windows 最穩）：Next + 本機 WS 代理
@@ -107,6 +125,7 @@ npm run dev:vercel
 2. 在 [vercel.com](https://vercel.com) Import 專案（Framework：Next.js）
 3. 在 Project Settings → Environment Variables 填入與 `.env.example` 對應的金鑰  
    - Google 請用 `GOOGLE_SERVICE_ACCOUNT_JSON`（整段 JSON），勿依賴本機檔案路徑
+   - Cloudflare：`CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`
 4. Deploy
 
 Vercel WebSocket 連線會在 Function `maxDuration`（Hobby 預設約 300 秒）到達時關閉；前端會自動退避重連。主動按「停止」不會重連。
@@ -116,7 +135,7 @@ Vercel WebSocket 連線會在 Function `maxDuration`（Hobby 預設約 300 秒�
 1. 新增 `src/providers/<id>/`，實作 [`CaptionProvider`](src/providers/types.ts)
 2. 憑證／串流代理加在 [`app/api/`](app/api/) 或 [`server/`](server/)，並更新 `.env.example`
 3. 在 [`src/providers/index.ts`](src/providers/index.ts) 的 `bootstrapProviders()` 註冊
-4. 語言映射放在該供應商目錄（參考 `azure/lang.ts`、`google/lang.ts`、`deepgram/lang.ts`、`assemblyai/lang.ts`）
+4. 語言映射放在該供應商目錄（參考 `azure/lang.ts`、`google/lang.ts`、`deepgram/lang.ts`、`assemblyai/lang.ts`、`cloudflare/lang.ts`）
 
 `main.ts` / `session.ts` 不應依賴特定供應商 SDK。
 

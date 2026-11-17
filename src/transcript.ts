@@ -82,10 +82,14 @@ export class TranscriptFeed {
       entry.targetTextEl.classList.remove("is-empty");
     }
 
+    // Prefer the UI-selected source language when the user fixed one.
+    // Streaming models (esp. Cloudflare Nova-3 multi) often mis-tag Mandarin as pt/nl.
     const sourceCode =
-      cue.sourceLang && cue.sourceLang !== "auto"
-        ? cue.sourceLang
-        : this.sourceLanguage;
+      this.sourceLanguage !== "auto"
+        ? this.sourceLanguage
+        : cue.sourceLang && cue.sourceLang !== "auto"
+          ? cue.sourceLang
+          : this.sourceLanguage;
     entry.sourceLangEl.textContent =
       sourceCode === "auto" ? "自動偵測" : langLabel(sourceCode);
     entry.targetLangEl.textContent = langLabel(cue.targetLang || this.targetLanguage);
@@ -133,10 +137,14 @@ export class TranscriptFeed {
     const sourceLabel = document.createElement("span");
     sourceLabel.className = "entry-label";
     const sourceLangEl = document.createElement("span");
+    const initialSource =
+      this.sourceLanguage !== "auto"
+        ? this.sourceLanguage
+        : cue.sourceLang && cue.sourceLang !== "auto"
+          ? cue.sourceLang
+          : "auto";
     sourceLangEl.textContent =
-      cue.sourceLang && cue.sourceLang !== "auto"
-        ? langLabel(cue.sourceLang)
-        : "自動偵測";
+      initialSource === "auto" ? "自動偵測" : langLabel(initialSource);
     sourceLabel.append("原文 / ", sourceLangEl);
 
     const sourceTextEl = document.createElement("p");

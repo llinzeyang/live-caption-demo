@@ -29,7 +29,7 @@ export function bootstrapPricingDesk(): void {
       `資料日期：${PRICING_AS_OF}（公開 list／PAYG，USD）`,
       "場景：連續聆聽、1 個目標語",
       `預設轉錄量：每小時 ${DEFAULT_CHARS_PER_HOUR.toLocaleString()} 字元（Azure 文件常見舉例）`,
-      "主比較列不計免費額度；Azure 一站式已含翻譯，其餘為 STT + MT 加總；Cloudflare 為 Workers AI 公開牌價參考",
+      "主比較列不計免費額度；Azure 一站式已含翻譯，其餘為 STT + MT 加總（含 Cloudflare Workers AI）",
     ];
     assumptionsList.innerHTML = items.map((t) => `<li>${t}</li>`).join("");
   }
