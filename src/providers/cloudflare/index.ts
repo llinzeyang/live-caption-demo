@@ -26,8 +26,13 @@ type ServerMessage =
       sourceLang?: string;
       targetLang?: string;
     }
-  | { type: "status"; status: "connecting" | "listening" | "stopped" }
+  | {
+      type: "status";
+      status: "connecting" | "listening" | "stopped" | "flushed";
+    }
   | { type: "error"; message: string };
+
+const FLUSH_TIMEOUT_MS = 20_000;
 
 type Session = {
   opts: CaptionProviderStartOptions;
@@ -66,6 +71,7 @@ export class CloudflareCaptionProvider implements CaptionProvider {
   private stopped = true;
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private flushWaiters: Array<() => void> = [];
 
   supportedLanguages(): { source: string[]; target: string[] } {
     return {
@@ -220,6 +226,11 @@ export class CloudflareCaptionProvider implements CaptionProvider {
         }
 
         if (msg.type === "status") {
+          if (msg.status === "flushed") {
+            const waiters = this.flushWaiters.splice(0);
+            for (const resolve of waiters) resolve();
+            return;
+          }
           session.handlers.onStatus?.(msg.status);
           return;
         }
@@ -248,20 +259,50 @@ export class CloudflareCaptionProvider implements CaptionProvider {
     });
   }
 
+  private async drainBeforeClose(ws: WebSocket): Promise<void> {
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.flushWaiters = this.flushWaiters.filter((w) => w !== finish);
+        resolve();
+      };
+      const timer = setTimeout(finish, FLUSH_TIMEOUT_MS);
+      this.flushWaiters.push(finish);
+      try {
+        ws.send(JSON.stringify({ type: "flush" }));
+      } catch {
+        finish();
+      }
+    });
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.clearReconnectTimer();
-    this.session = null;
     this.sendFrame = null;
     this.pcm?.stop();
     this.pcm = null;
     const ws = this.ws;
+    // Keep `session` until after drain so late cues still reach onCue.
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      await this.drainBeforeClose(ws);
+    }
     this.ws = null;
+    this.session = null;
     if (
       ws &&
       (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)
     ) {
-      ws.close();
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
     }
   }
 }

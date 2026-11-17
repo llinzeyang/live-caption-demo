@@ -102,7 +102,15 @@ export async function preparePlaybackFromArrayBuffer(
     start: () => {
       if (started || stopped) return;
       started = true;
-      source.start(0);
+      // Resume may be needed after async TTS fetch loses the click gesture.
+      void ctx.resume().finally(() => {
+        if (stopped) return;
+        try {
+          source.start(0);
+        } catch {
+          resolveEnded();
+        }
+      });
     },
     stop,
   };

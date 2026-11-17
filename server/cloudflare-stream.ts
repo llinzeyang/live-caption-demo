@@ -10,7 +10,8 @@ import { detectedToTranslateSource } from "./translate";
 
 const INTERIM_DEBOUNCE_MS = 300;
 const KEEPALIVE_MS = 8000;
-const WHISPER_CHUNK_BYTES = 16_000 * 2 * 2.5; // ~2.5s of 16-bit mono PCM
+const WHISPER_CHUNK_BYTES = 16_000 * 2 * 1.5; // ~1.5s of 16-bit mono PCM
+const WHISPER_MIN_BYTES = 3200; // ~100ms
 
 /** Explicit `language=` values that Workers AI Nova-3 WS accepts (probed). */
 const NOVA3_DIRECT_LANGS = new Set(["en", "en-US", "ja", "multi"]);
@@ -256,9 +257,20 @@ export async function handleCloudflareConnection(
     sendJson(ws, { type: "status", status: "listening" });
   };
 
+  const waitWhisperIdle = async (): Promise<void> => {
+    while (whisperBusy && !closed) {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+  };
+
   const flushWhisper = async (forceFinal: boolean): Promise<void> => {
-    if (whisperBusy || closed) return;
-    if (whisperPcm.byteLength < 3200 && !forceFinal) return;
+    if (closed) return;
+    if (whisperBusy) {
+      if (!forceFinal) return;
+      await waitWhisperIdle();
+      if (closed) return;
+    }
+    if (whisperPcm.byteLength < WHISPER_MIN_BYTES && !forceFinal) return;
     if (whisperPcm.byteLength === 0) return;
 
     const slice = whisperPcm;
@@ -285,6 +297,15 @@ export async function handleCloudflareConnection(
         void flushWhisper(false);
       }
     }
+  };
+
+  /** Finish remaining Whisper audio while the client socket is still open. */
+  const drainWhisper = async (): Promise<void> => {
+    if (closed || mode !== "whisper") return;
+    await waitWhisperIdle();
+    if (closed) return;
+    await flushWhisper(true);
+    await waitWhisperIdle();
   };
 
   const startWhisper = (): void => {
@@ -392,6 +413,8 @@ export async function handleCloudflareConnection(
   };
 
   const cleanup = (): void => {
+    // Socket is already closing — cannot deliver cues here. Clients must send
+    // `{ type: "flush" }` before close so Whisper can finish while OPEN.
     closed = true;
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -400,9 +423,6 @@ export async function handleCloudflareConnection(
     if (keepalive) {
       clearInterval(keepalive);
       keepalive = null;
-    }
-    if (mode === "whisper" && whisperPcm.byteLength > 0) {
-      void flushWhisper(true);
     }
     if (upstream) {
       try {
@@ -434,6 +454,25 @@ export async function handleCloudflareConnection(
           translateSource?: string;
           translateTarget?: string;
         };
+        if (msg.type === "flush") {
+          void (async () => {
+            try {
+              await drainWhisper();
+            } catch (err) {
+              if (!closed) {
+                sendJson(ws, {
+                  type: "error",
+                  message: err instanceof Error ? err.message : String(err),
+                });
+              }
+            } finally {
+              if (!closed) {
+                sendJson(ws, { type: "status", status: "flushed" });
+              }
+            }
+          })();
+          return;
+        }
         if (msg.type === "config") {
           config = {
             sourceLang: msg.sourceLang ?? config.sourceLang,

@@ -32,10 +32,18 @@ export function startPcmCapture(
   mute.connect(ctx.destination);
 
   processor.onaudioprocess = (event) => {
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
     const input = event.inputBuffer.getChannelData(0);
+    // Copy into a tight ArrayBuffer — Int16Array.buffer may be a large shared slab.
     const pcm = downsampleTo16kInt16(input, ctx.sampleRate);
     if (pcm.byteLength > 0) {
-      onFrame(pcm.buffer as ArrayBuffer);
+      const copy = new ArrayBuffer(pcm.byteLength);
+      new Uint8Array(copy).set(
+        new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength),
+      );
+      onFrame(copy);
     }
   };
 

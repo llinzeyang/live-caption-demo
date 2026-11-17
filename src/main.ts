@@ -29,6 +29,19 @@ let injectedStatusLabel = "播放測試音訊…";
 
 const TTS_MAX_CHARS = 500;
 
+/** Keep a warm AudioContext so async TTS/fetch still gets audible playback + PCM. */
+let audioUnlockCtx: AudioContext | null = null;
+function unlockAudio(): void {
+  const AudioCtx =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext })
+      .webkitAudioContext;
+  if (!audioUnlockCtx || audioUnlockCtx.state === "closed") {
+    audioUnlockCtx = new AudioCtx();
+  }
+  void audioUnlockCtx.resume();
+}
+
 const providerSelect = document.querySelector<HTMLSelectElement>("#providerSelect")!;
 const sourceLangSelect = document.querySelector<HTMLSelectElement>("#sourceLang")!;
 const targetLangSelect = document.querySelector<HTMLSelectElement>("#targetLang")!;
@@ -446,6 +459,7 @@ bootstrapProviderSelect();
 bootstrapTtsLangSelect();
 
 startBtn.addEventListener("click", () => {
+  unlockAudio();
   void startSession();
 });
 
@@ -454,10 +468,12 @@ stopBtn.addEventListener("click", () => {
 });
 
 testAudioBtn.addEventListener("click", () => {
+  unlockAudio();
   void runTestAudio();
 });
 
 speakRecognizeBtn.addEventListener("click", () => {
+  unlockAudio();
   void runCustomSpeakRecognize();
 });
 
